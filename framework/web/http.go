@@ -75,23 +75,13 @@ func (h HttpHandler) readTemplate(templateName string) (string, error) {
 	return "", errors.New(fmt.Sprintf("Could not find template %s", templateName))
 }
 
-func getMimeType(fileName string) string {
-	ext := filepath.Ext(fileName)
-	switch ext {
-	case ".css":
-		return "text/css"
-	default:
-		return "text/plain"
-	}
-}
-
 func (h HttpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	method, err := ValueOfHttpMethod(req.Method)
 	uri := req.RequestURI
 	if strings.HasPrefix(uri, "/static") {
-		w.Header().Set("Content-Type", getMimeType(uri))
+		w.Header().Set("Content-Type", util.GetMimeType(filepath.Ext(uri)))
 		content, _ := ioutil.ReadFile("./" + uri)
-		fmt.Fprintf(w, string(content))
+		w.Write(content)
 		return
 	}
 
