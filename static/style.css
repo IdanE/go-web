@@ -1,0 +1,20 @@
+.navbar {
+    background-color: #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    min-height: 2em;
+    align-items: center;
+    padding: 10px;
+}
+.menu-items {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+.menu-item:not(:last-child) {
+    margin-right: 10px;
+}
+
+.content {
+    padding: 10px;
+}

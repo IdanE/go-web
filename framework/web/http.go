@@ -7,14 +7,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
 type HttpMethod string
-const(
-	GET HttpMethod = "GET"
-	POST HttpMethod = "POST"
-	PUT HttpMethod = "PUT"
+
+const (
+	GET    HttpMethod = "GET"
+	POST   HttpMethod = "POST"
+	PUT    HttpMethod = "PUT"
 	DELETE HttpMethod = "DELETE"
 )
 
@@ -36,36 +38,46 @@ func ValueOfHttpMethod(value string) (HttpMethod, error) {
 }
 
 type Route struct {
-	Method HttpMethod
-	Route string
+	Method  HttpMethod
+	Route   string
 	Handler func(w http.ResponseWriter, req *http.Request) Response
 }
 
 type Response struct {
-	Text string
+	Text       string
 	Parameters []util.Pair
 }
 
 type HttpHandler struct {
-	Routes []Route
+	Globals []util.Pair
+	Routes  []Route
 }
 
-func readFile(fileName string) (string, error) {
-	fileContent, err := ioutil.ReadFile(fmt.Sprintf("./static/%s.html", fileName))
+func readTemplate(fileName string) (string) {
+	fileContent, err := ioutil.ReadFile(fmt.Sprintf("./templates/%s.html", fileName))
 	if err != nil {
 		// todo
-		return "", err
+		return ""
 	}
-	return string(fileContent), nil
+	return string(fileContent)
 }
 
-func (h HttpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)  {
+func getMimeType(fileName string) string {
+	ext := filepath.Ext(fileName)
+	switch ext {
+	case ".css":
+		return "text/css"
+	default:
+		return "text/plain"
+	}
+}
+
+func (h HttpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	method, err := ValueOfHttpMethod(req.Method)
 	uri := req.RequestURI
-	if strings.HasPrefix(uri, "/resources") {
-		uri = strings.ReplaceAll(uri, "/resources/", "")
-		fileName := fmt.Sprintf("./static/resources/%s", uri)
-		content, _ := ioutil.ReadFile(fileName)
+	if strings.HasPrefix(uri, "/static") {
+		w.Header().Set("Content-Type", getMimeType(uri))
+		content, _ := ioutil.ReadFile("./" + uri)
 		fmt.Fprintf(w, string(content))
 		return
 	}
@@ -85,8 +97,8 @@ func (h HttpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)  {
 			text := response.Text
 			if strings.HasPrefix(text, "template:") {
 				text = strings.ReplaceAll(text, "template:", "")
-				text, err = readFile(text)
-				fmt.Fprintf(w, template.ProcessTemplate(text, response.Parameters...))
+				text = readTemplate(text)
+				fmt.Fprintf(w, template.ProcessTemplate(text, append(response.Parameters, h.Globals...)...))
 			} else {
 				fmt.Fprintf(w, text)
 			}
@@ -94,4 +106,10 @@ func (h HttpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)  {
 			return
 		}
 	}
+
+	text := readTemplate("404")
+	fmt.Fprintf(w, template.ProcessTemplate(text, append(
+		h.Globals,
+		util.Pair{Key: "title", Value: "Page Not Found"},
+	)...))
 }

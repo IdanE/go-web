@@ -10,7 +10,7 @@ import (
 
 func ProcessTemplate(template string, pairs ...util.Pair) string {
 	template = replaceIncludes(template)
-	template = replaceVariables(template)
+	template = replaceVariables(template, pairs...)
 	return template
 }
 
@@ -33,7 +33,7 @@ func replaceIncludes(template string) string {
 	search := regexp.MustCompile("%include\\s(.+)")
 	result := search.ReplaceAllFunc([]byte(template), func(s []byte) []byte {
 		templateName := search.FindSubmatch(s)[1]
-		content, err := ioutil.ReadFile(fmt.Sprintf("./static/%s.html", templateName))
+		content, err := ioutil.ReadFile(fmt.Sprintf("./templates/%s.html", templateName))
 		if err != nil {
 			return []byte("todo")
 		}
@@ -41,7 +41,6 @@ func replaceIncludes(template string) string {
 	})
 	return string(result)
 }
-
 
 func getValueForVariable(variable string, pairs ...util.Pair) (string, error) {
 	for _, pair := range pairs {
