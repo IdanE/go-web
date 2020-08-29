@@ -51,15 +51,28 @@ type Response struct {
 type HttpHandler struct {
 	Globals []util.Pair
 	Routes  []Route
+	Templates map[string]template.Template
 }
 
-func readTemplate(fileName string) (string) {
-	fileContent, err := ioutil.ReadFile(fmt.Sprintf("./templates/%s.html", fileName))
+func NewHttpHandler(templateDir string, routes []Route, globals []util.Pair) (*HttpHandler, error) {
+	templates, err := template.LoadTemplates(templateDir)
 	if err != nil {
-		// todo
-		return ""
+		return nil, err
 	}
-	return string(fileContent)
+	handler := HttpHandler{
+		Globals: globals,
+		Routes: routes,
+		Templates: templates,
+	}
+
+	return &handler, nil
+}
+
+func (h HttpHandler) readTemplate(templateName string) (string, error) {
+	if template, present := h.Templates[templateName]; present {
+		return template.Content, nil
+	}
+	return "", errors.New(fmt.Sprintf("Could not find template %s", templateName))
 }
 
 func getMimeType(fileName string) string {
@@ -97,7 +110,11 @@ func (h HttpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			text := response.Text
 			if strings.HasPrefix(text, "template:") {
 				text = strings.ReplaceAll(text, "template:", "")
-				text = readTemplate(text)
+				text, err := h.readTemplate(text)
+				if err != nil {
+					fmt.Fprint(w, err)
+					return
+				}
 				fmt.Fprintf(w, template.ProcessTemplate(text, append(response.Parameters, h.Globals...)...))
 			} else {
 				fmt.Fprintf(w, text)
@@ -107,7 +124,11 @@ func (h HttpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	text := readTemplate("404")
+	text, err := h.readTemplate("404")
+	if err != nil {
+		fmt.Fprint(w, err)
+		return
+	}
 	fmt.Fprintf(w, template.ProcessTemplate(text, append(
 		h.Globals,
 		util.Pair{Key: "title", Value: "Page Not Found"},
