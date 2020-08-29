@@ -1,0 +1,1 @@
+An experimental and simplistic Go web framework with Spring as a primary influence
